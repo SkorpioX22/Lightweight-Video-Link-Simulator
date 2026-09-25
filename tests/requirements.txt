@@ -1,0 +1,7 @@
+# Already installed in the current environment (documented for CI/setup):
+pytest
+numpy
+opencv-python
+
+# Runtime dependency of the engine package itself (`from engine import ...`):
+numba

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# large / regenerable media
+demo/gui/demo_video1.mp4
+tests/qa/videos/
+
+# generated outputs
+examples/output/
