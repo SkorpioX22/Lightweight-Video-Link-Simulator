@@ -101,6 +101,14 @@ specks (0.04) -> hue (0.12) -> saturation (0.18) -> killer/sparklies (0.42)
 -> jitter (0.52) -> tear (0.62) -> roll (0.72) -> static (0.88). The
 nonlinear spacing concentrates stages inside the physical ~12 dB window.
 
+**Dead link (signalStrength = 99).** At exactly raw 1.0 the renderer shows
+only dead-link static: multipath and interference stages are zeroed and
+roll/seam/tear/jitter are forced off (the `dead` branch in
+`engine/renderer/engine.py`), so the output is the `static_kill` static alone
+— neutral-gray boiling snow with no picture, no color, and no band structure.
+Values just below 99 keep the full pipeline (interference bands at signal 98
+remain visible).
+
 ### 4.2 Noise structure
 
 - **Dual-scale noise**: luma grain sampled on a fine lattice (spatial scale

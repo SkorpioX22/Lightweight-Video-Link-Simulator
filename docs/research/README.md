@@ -6,11 +6,18 @@ the real world, driven by three independent severity axes:
 
 | Axis (engine param)      | Physical cause                                   | Visual signature |
 |--------------------------|--------------------------------------------------|------------------|
-| `signalStrength` (0..99) | Low received power (range, obstacles, antennas)  | Noise-dominant: snow, color kill, tearing, roll, static |
+| `signalStrength` (0..99) | Low received power (range, obstacles, antennas)  | Noise-dominant: snow, color kill, tearing, roll, static; exactly 99 = dead link (static only / full no-signal screen) |
 | `multipath` (0..99)      | Reflected copies of the signal arriving late     | Structural: echoes, smear, displaced blocks, white flashes |
 | `rfInterference` (0..99) | Other transmitters (Wi-Fi, other VTXs, CW)       | Bursty + banded: scrolling noise stripes, slices, fringe |
 
-Higher param value = worse link. `0` = clean, `99` = extreme.
+Higher param value = worse link. `0` = clean, `99` = extreme — and for
+`signalStrength` specifically, `99` is the **dead link**: both engines drop
+all other picture processing and show only their no-signal state.
+
+A second engine models the **HDZero digital link** (`engine/hdzero/`) with
+the same three axes — digital failure modes are block corruption,
+speckle, a real no-signal loss screen (growing 8x8 patch ramp), and
+breakup-to-black instead of snow (see `hdzero.md`).
 
 ## Documents
 
@@ -20,6 +27,7 @@ Higher param value = worse link. `0` = clean, `99` = extreme.
 | `multipath.md`   | Echo/comb physics, FM phase-ripple effects, ghost stages, null dropouts, engine implementation |
 | `interference.md`| Wi-Fi/VTX/CW signatures, burst/band structure, causation, engine burst machine |
 | `dvr_vs_rf.md`   | Which artifacts live in the RF chain vs the recorder; what the engine deliberately does not emulate |
+| `hdzero.md`      | HDZero digital failure modes (FEC cliff, corrupt 8x8 blocks, takeover events, real no-signal screen with 8x8 patch ramp, blackout), stage curves, event machine |
 
 ## End-to-end signal chain
 
@@ -98,6 +106,7 @@ nonlinear rather than evenly spaced over 0..99.
 | `multipath.md` | `engine/multipath/multipath.py` | `multipath_stages()` |
 | `interference.md` | `engine/interference/interference.py` | `interference_stages()` |
 | `dvr_vs_rf.md` | renderer compositing order in `engine/renderer/engine.py` | (scope boundary) |
+| `hdzero.md` | `engine/hdzero/` (`HDZeroEngine`) | `hdz_*_stages()` in `engine/hdzero/params.py` |
 
 Compositing order per frame: multipath (structural, needs clean source) ->
 weak signal (snow/color/sparklies, accumulates jitter+tear) -> interference

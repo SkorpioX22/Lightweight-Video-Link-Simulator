@@ -3,14 +3,20 @@
 **LVLS** (Lightweight Video Link Simulation) is a standalone video-link
 degradation model for FPV (first-person view) applications. It takes clean RGB
 frames — typically a simulator's rendered output — and produces plausibly
-authentic **5.8 GHz analog FPV** breakup, driven by three independent severity
-parameters:
+authentic breakup for two link types:
+
+- **5.8 GHz analog FPV** (`AnalogVideoBreakupEngine`) — snow, ghosting,
+  noisy bars
+- **HDZero digital FPV** (`HDZeroEngine`) — corrupt DCT blocks, speckle,
+  takeover events, real no-signal loss screen, breakup-to-black
+
+Both engines are driven by the same three independent severity parameters:
 
 | Parameter | Range | 0 | 99 |
 |---|---|---|---|
-| `signalStrength` | 0..99 | clean link | near-total video loss (static) |
-| `multipath` | 0..99 | no reflections | heavy ghosting, dropouts, roll |
-| `rfInterference` | 0..99 | no interferers | sustained noisy bars / slices |
+| `signalStrength` | 0..99 | clean link | dead link: analog = plain boiling static only; digital = full no-signal screen every frame (patch ramp + blackouts live just below 99) |
+| `multipath` | 0..99 | no reflections | analog: ghosting/roll; digital: clustered block punch-outs |
+| `rfInterference` | 0..99 | no interferers | analog: noisy bars/slices; digital: takeover events (band/rainbow/lines/black) |
 
 Each parameter is independent; setting one to 99 while the others are 0 must
 produce a phenomenon that is visually distinct from the other two. That
@@ -26,22 +32,31 @@ severity** — 0 = no effect, 99 = extreme (a worse link).
 - Three independent 0..99 parameters with physically-researched stage curves
   (grain → snow → color kill → tear/roll → static; echo → smear → displacement
   → nulls; bars → fringe → slices → false sync)
+- HDZero digital model with the same three axes: corrupt 8x8 DCT blocks,
+  white speckle, clustered punch-outs, band/rainbow/lines/black takeover
+  events, and the signature **no-signal loss screen** on total signal loss —
+  the real captured screen (`engine/hdzero/no_signal.png`), ramping in as
+  growing random 8x8 patches before it covers the frame; pixels outside
+  damaged areas stay clean
 - Deterministic: all randomness derives from `(seed, frame_index)` counter
   hashes — same inputs, same outputs, on any machine
 - Bit-identical passthrough when all parameters are 0
 - Fast path for repeated calls (`advance=False`), plus temporal state machines
-  for roll events, color-killer hysteresis, multipath null/flash and
-  interference bursts
+  for roll events, color-killer hysteresis, multipath null/flash,
+  interference bursts and digital takeover events
 - Pure CPU (Numba-compiled kernels); no GPU required —
   `pip install numpy numba`
 - Optional GLSL fragment-shader port for real-time / in-simulator use
-- PySide6 GUI demo, sample media, pytest suite, visual QA harness
+- PySide6 GUI demos (analog + HDZero), sample media, pytest suite, visual QA
+  harness
 
 ## Install
 
 ```bash
 pip install numpy numba            # engine runtime
-pip install opencv-python pytest   # demos / tests (optional)
+pip install opencv-python pytest   # demos / tests (optional; also loads the
+                                   # HDZero no-signal PNG — engine falls back
+                                   # to a procedural screen without it)
 pip install PySide6                # GUI demo (optional)
 ```
 
@@ -82,6 +97,23 @@ cv2.imwrite("out.png", cv2.cvtColor(out_rgb, cv2.COLOR_RGB2BGR))
 ```
 
 Full API: [`docs/api/API.md`](docs/api/API.md).
+
+### HDZero (digital)
+
+```python
+from engine import HDZeroEngine
+
+eng = HDZeroEngine(seed=42)
+out = eng.process(clean, {
+    "signalStrength": 30,   # corrupt blocks + speckle
+    "multipath": 60,        # clustered punch-out patches
+    "rfInterference": 40,   # takeover events (band/rainbow/lines/black)
+})
+```
+
+Identical contract to the analog engine (same keys, same `process()`
+semantics, `HDZ_PRESETS` presets, `warmup()` for JIT precompile). Research
+and stage tables: [`docs/research/hdzero.md`](docs/research/hdzero.md).
 
 ## Presets
 
@@ -145,6 +177,9 @@ pip install PySide6 opencv-python
 
 # 2. launch the GUI (from the project root)
 python demo/gui/main.py
+
+# or the HDZero digital-link demo (same UI, HDZero engine)
+python demo/hdzero.py
 ```
 
 **Controls**
@@ -179,10 +214,13 @@ deterministic `frame_index`.
 ### Other demos and tools
 
 ```bash
-# Render the visual test matrix + QA clips
+# Render the visual test matrix + QA clips (analog)
 python tests/render_matrix.py
 
-# Test suite (11 tests)
+# Render the HDZero matrix + clips (peak-effect frame selection)
+python tests/render_matrix_hdzero.py
+
+# Test suite (12 analog + 14 HDZero tests)
 python -m pytest tests/
 
 # Runnable simulator-loop integration example
@@ -205,7 +243,7 @@ Shadertoy notes, verification status and deliberate differences.
 |---|---|
 | [`docs/api/API.md`](docs/api/API.md) | full API reference |
 | [`docs/integration/INTEGRATION.md`](docs/integration/INTEGRATION.md) | wiring into a simulator loop |
-| [`docs/research/`](docs/research/README.md) | per-phenomenon field research (weak signal, multipath, interference, DVR vs RF) |
+| [`docs/research/`](docs/research/README.md) | per-phenomenon field research (weak signal, multipath, interference, DVR vs RF, HDZero digital) |
 | [`engine/glsl/README.md`](engine/glsl/README.md) | shader port interface & notes |
 | [`examples/integration_example.py`](examples/integration_example.py) | runnable simulator-loop example |
 
@@ -213,8 +251,9 @@ Shadertoy notes, verification status and deliberate differences.
 
 | Path | Shipped in repo? | Notes |
 |---|---|---|
-| `engine/` | yes | simulation core (Python/Numba + GLSL) |
-| `demo/gui/main.py` | yes | PySide6 GUI demo |
+| `engine/` | yes | simulation core (Python/Numba + GLSL): analog + HDZero (incl. the `hdzero/no_signal.png` loss-screen asset) |
+| `demo/gui/main.py` | yes | PySide6 GUI demo (analog engine; engine selectable via `LVLS_ENGINE`) |
+| `demo/hdzero.py` | yes | HDZero demo entry point (same UI, digital engine) |
 | `demo/sample_media/` | yes | synthetic sample clip + generator |
 | `demo/gui/demo_video1.mp4` | **no** | large footage file — add your own clip (see demo instructions) |
 | `tests/`, `docs/`, `examples/` | yes | test suite, QA harness, docs |
@@ -224,12 +263,21 @@ Shadertoy notes, verification status and deliberate differences.
 - `tests/test_engine.py` — 11 pytest tests: identity fast path, determinism,
   uint8 contract, parameter independence (each pillar must visibly change the
   frame), reset/seed behavior, presets.
+- `tests/test_hdzero.py` — 14 tests: the analog set adapted for digital
+  signatures (block/speckle/cluster metrics, blackout + takeover burstiness,
+  no-signal screen with its growing 8x8 patch ramp, max-effect stability,
+  performance).
 - `tests/render_matrix.py` — renders labeled stills (`tests/qa/matrix/`) and
   75-frame clips (`tests/qa/videos/`) across the severity grid.
+- `tests/render_matrix_hdzero.py` — HDZero grid (`tests/qa/hdzero/`,
+  peak-effect frame selection), a loss-ramp progression strip
+  (`loss_ramp_strip.png`) and 60-frame clips (`tests/qa/hdzero_clips/`).
 - Visual QA protocol: extract frames, check three-phenomenon distinctness,
   ghost correlability (LS-fit echo coefficient), null-window budgets,
   interference burstiness/tint, and pilot plausibility. Two full review rounds
-  were run; all first-round defects were verified fixed in round two.
+  were run; all first-round defects were verified fixed in round two. The
+  HDZero model went through its own visual review rounds (block texture,
+  event occupancy ladder, temporal strips).
 
 ## Known limitations
 
@@ -245,8 +293,10 @@ Shadertoy notes, verification status and deliberate differences.
 - **Performance upgrades** — further kernel optimizations and a realtime
   GPU path so the simulation can run at full frame rate inside a live
   simulator render loop.
-- **Digital video link simulations** — models for digital FPV systems such as
-  **HDZero**, **DJI OcuSync (O4, O3, and related generations)**, and other
-  digital transmission links, each with its own characteristic failure modes
-  (compression artifacts, block corruption, breakup-to-black behavior) alongside
-  the existing analog model.
+- **More digital video link simulations** — models for other digital FPV
+  systems such as **DJI OcuSync (O4, O3, and related generations)** and
+  Walksnail Avatar, each with its own characteristic failure modes
+  (compression artifacts, block corruption, breakup-to-black behavior)
+  alongside the existing analog and HDZero models.
+- **GLSL port for HDZero** — the analog shader port exists; a digital
+  counterpart would enable in-simulator realtime HDZero breakup.

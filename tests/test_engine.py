@@ -265,6 +265,31 @@ def test_max_effect_stability(frame, engine):
     assert engine.frame_index == 15
 
 
+def test_dead_link_static_at_99(frame, engine):
+    """signal 99 = dead link: plain boiling static, nothing else — no
+    interference bands, no picture structure, no color — even with
+    multipath and interference also at 99."""
+    params = {"signalStrength": 99, "multipath": 99, "rfInterference": 99}
+    outs = [engine.process(frame, params) for _ in range(8)]
+    for k, out in enumerate(outs):
+        # no horizontal band structure (active interference bands push the
+        # row-mean std above 27 and the source picture sits at ~26; dead-link
+        # static measures ~13 with max ~16 on this fixture)
+        row_std = float(out.mean(axis=(1, 2)).std())
+        assert row_std < 20.0, f"row structure at frame {k}: std {row_std:.2f}"
+        # no picture structure survives (source columns sit at ~36; static ~12)
+        col_std = float(out.mean(axis=(0, 2)).std())
+        assert col_std < 20.0, f"column structure at frame {k}: std {col_std:.2f}"
+        # color killer latches: dead-link static is grayscale
+        spread = float(np.abs(
+            out[..., 0].astype(np.int16) - out[..., 2].astype(np.int16)).mean())
+        assert spread < 2.0, f"chroma survives at frame {k}: spread {spread:.3f}"
+        if k:
+            d = float(np.abs(
+                out.astype(np.int16) - outs[k - 1].astype(np.int16)).mean())
+            assert d > 10.0, f"static not boiling, frame diff {d:.2f}"
+
+
 def test_presets(frame, engine):
     assert "CLEAN" in PRESETS
     for name, params in PRESETS.items():

@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from engine import AnalogVideoBreakupEngine  # noqa: E402
+from engine import AnalogVideoBreakupEngine, HDZeroEngine  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -21,3 +21,5 @@ def numba_warmup():
     frame[:, 40:, 2] = 180
     eng = AnalogVideoBreakupEngine(seed=12345)
     eng.process(frame, {"signalStrength": 60, "multipath": 60, "rfInterference": 60})
+    hz = HDZeroEngine(seed=12345)
+    hz.process(frame, {"signalStrength": 60, "multipath": 60, "rfInterference": 60})

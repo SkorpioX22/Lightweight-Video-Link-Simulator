@@ -27,6 +27,10 @@ Output: `fragColor` (RGBA). All-zero params → bit-identical passthrough of `uS
 
 All severity curves are copied verbatim from `engine/core/params.py`.
 
+At `uSignalStrength >= 99.5` (signal 99, the dead link) the shader zeroes
+the multipath and interference stages and forces roll/tear/jitter off —
+plain static only, mirroring the Python engines.
+
 ## Determinism / stateless machines
 
 Output is a pure function of `(uSrc, uFrame, uSeed, params)` — no feedback FBO.

@@ -5,9 +5,12 @@ Pipeline (per docs/research compositing order):
     -> planar YUV
     -> multipath   (structural: echoes / comb / displacement / bands / nulls)
     -> weak signal (snow / chroma kill / sparklies; accumulates jitter+tear)
-    -> interference(burst bands / slices / fringe; accumulates false-sync)
-    -> geometry    (row_shift + vertical roll + roll-seam noise)
-    -> RGB
+  -> interference(burst bands / slices / fringe; accumulates false-sync)
+  -> geometry    (row_shift + vertical roll + roll-seam noise)
+  -> RGB
+
+signal 99 = dead link: the weak-signal static path runs alone (multipath,
+interference and sync roll suppressed) — plain static, nothing else.
 
 0,0,0 fast-path returns the input unchanged (bit-identical).
 Deterministic: all randomness derives from (seed, frame_index).
@@ -241,6 +244,17 @@ class AnalogVideoBreakupEngine:
         ms = stages["multipath"]
         isf = stages["interference"]
 
+        # signal 99 = dead link: plain static, nothing else — multipath,
+        # interference bands and sync roll/seam must not show through
+        dead = stages["raw"]["signal"] >= 0.995
+        if dead:
+            ss = dict(ss)
+            ss["roll"] = 0.0
+            ss["tear"] = 0.0
+            ss["h_jitter"] = 0.0
+            ms = {k: 0.0 for k in ms}
+            isf = {k: 0.0 for k in isf}
+
         # -------- 1) multipath (structural; reads src writes dst) --------
         do_mp = ms["ghost1_a"] > 0 or ms["comb_k"] > 0 or ms["smear_px"] > 0 or \
                 ms["block_shift"] > 0 or ms["band_ripple"] > 0 or ms["null_rate"] > 0 or \
@@ -315,6 +329,9 @@ class AnalogVideoBreakupEngine:
         # -------- 4) geometry: row shifts + vertical roll --------
         roll = float(int(sig[signal_mod.S_ROLL_POS]))
         seam_on = sig[signal_mod.S_ROLL_ACTIVE] > 0.5
+        if dead:
+            roll = 0.0
+            seam_on = False
         if roll != 0.0 or np.any(row_shift) or seam_on:
             apply_geometry(
                 b["y"], b["u"], b["v"], b["y2"], b["u2"], b["v2"],

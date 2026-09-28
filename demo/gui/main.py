@@ -1,6 +1,7 @@
 """PySide6 GUI demo for LVLS — Lightweight Video Link Simulation.
 
-Run: python demo/gui/main.py
+Run analog:   python demo/gui/main.py
+Run HDZero:   python demo/hdzero.py   (or LVLS_ENGINE=hdzero)
 """
 import os
 import queue
@@ -22,10 +23,17 @@ except Exception as exc:
 else:
     CV2_IMPORT_ERROR = None
 
+ENGINE_KIND = os.environ.get("LVLS_ENGINE", "analog").strip().lower() or "analog"
+if ENGINE_KIND not in ("analog", "hdzero"):
+    ENGINE_KIND = "analog"
+
 try:
-    from engine import AnalogVideoBreakupEngine, PRESETS
+    if ENGINE_KIND == "hdzero":
+        from engine.hdzero import HDZeroEngine as ENGINE_CLS, PRESETS
+    else:
+        from engine import AnalogVideoBreakupEngine as ENGINE_CLS, PRESETS
 except Exception as exc:
-    AnalogVideoBreakupEngine = None
+    ENGINE_CLS = None
     PRESETS = {}
     ENGINE_IMPORT_ERROR = str(exc)
 else:
@@ -45,7 +53,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-WINDOW_TITLE = "LVLS — Lightweight Video Link Simulation"
+if ENGINE_KIND == "hdzero":
+    WINDOW_TITLE = "LVLS — HDZero Digital Link Simulation"
+    HEADER_TEXT = "LVLS — HDZERO DIGITAL LINK SIMULATION"
+else:
+    WINDOW_TITLE = "LVLS — Lightweight Video Link Simulation"
+    HEADER_TEXT = "LVLS — LIGHTWEIGHT VIDEO LINK SIMULATION"
 SAMPLE_PATH = os.path.join(ROOT, "demo", "gui", "demo_video1.mp4")
 SAMPLE_FALLBACK = os.path.join(ROOT, "demo", "sample_media", "sample.mp4")
 if not os.path.isfile(SAMPLE_PATH) and os.path.isfile(SAMPLE_FALLBACK):
@@ -249,7 +262,7 @@ class MainWindow(QWidget):
         self.lbl_proc = None
 
         if ENGINE_IMPORT_ERROR is None:
-            self.eng = AnalogVideoBreakupEngine(seed=12345)
+            self.eng = ENGINE_CLS(seed=12345)
             self._init_video()
 
         # coalesce slider storms into one reprocess per debounce interval
@@ -275,16 +288,27 @@ class MainWindow(QWidget):
         # first slider drag never hits a multi-second compile mid-drag
         self._warm_eng = None
         self._warm_frame = None
-        self._warm_queue = [
-            ({"signalStrength": 99, "multipath": 0, "rfInterference": 0},
-             "JIT: signal kernels (first run only)..."),
-            ({"signalStrength": 0, "multipath": 99, "rfInterference": 0},
-             "JIT: multipath kernels (first run only)..."),
-            ({"signalStrength": 0, "multipath": 0, "rfInterference": 99},
-             "JIT: interference kernels (first run only)..."),
-            ({"signalStrength": 99, "multipath": 99, "rfInterference": 99},
-             "JIT: geometry + composite (first run only)..."),
+        if ENGINE_KIND == "hdzero":
+            jit_labels = (
+                "JIT: bit-error kernels (first run only)...",
+                "JIT: cluster kernels (first run only)...",
+                "JIT: takeover kernels (first run only)...",
+                "JIT: event machine + composite (first run only)...",
+            )
+        else:
+            jit_labels = (
+                "JIT: signal kernels (first run only)...",
+                "JIT: multipath kernels (first run only)...",
+                "JIT: interference kernels (first run only)...",
+                "JIT: geometry + composite (first run only)...",
+            )
+        warm_params = [
+            {"signalStrength": 99, "multipath": 0, "rfInterference": 0},
+            {"signalStrength": 0, "multipath": 99, "rfInterference": 0},
+            {"signalStrength": 0, "multipath": 0, "rfInterference": 99},
+            {"signalStrength": 99, "multipath": 99, "rfInterference": 99},
         ]
+        self._warm_queue = list(zip(warm_params, jit_labels))
         QTimer.singleShot(0, self._warm_step)
 
     def _init_video(self):
@@ -335,7 +359,7 @@ class MainWindow(QWidget):
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
 
-        header = QLabel("LVLS — LIGHTWEIGHT VIDEO LINK SIMULATION")
+        header = QLabel(HEADER_TEXT)
         header.setAlignment(Qt.AlignCenter)
         font = header.font()
         font.setPointSize(15)
@@ -459,10 +483,10 @@ class MainWindow(QWidget):
 
     def _warm_step(self):
         """One warmup compile per event-loop turn; progress shown in status."""
-        if AnalogVideoBreakupEngine is None:
+        if ENGINE_CLS is None:
             return
         if self._warm_eng is None:
-            self._warm_eng = AnalogVideoBreakupEngine(seed=1)
+            self._warm_eng = ENGINE_CLS(seed=1)
             self._warm_frame = np.full((64, 64, 3), 96, dtype=np.uint8)
         if self._warm_queue:
             params, label = self._warm_queue.pop(0)

@@ -5,6 +5,7 @@ __pycache__/
 # large / regenerable media
 demo/gui/demo_video1.mp4
 tests/qa/videos/
+tests/qa/hdzero_clips/
 
 # generated outputs
 examples/output/

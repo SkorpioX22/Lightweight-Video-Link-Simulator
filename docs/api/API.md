@@ -1,7 +1,8 @@
 # API Reference — LVLS (Lightweight Video Link Simulation)
 
 `AnalogVideoBreakupEngine` converts clean RGB frames into analog-FPV-style
-degraded video, driven by three severity parameters.
+degraded video, driven by three severity parameters. `HDZeroEngine`
+(Section 15) is the digital-link counterpart with an identical contract.
 
 - Version: `1.0.0` (`AnalogVideoBreakupEngine.VERSION`, `engine.__version__`)
 - Pure CPU (Numba-compiled kernels); no GPU required
@@ -103,7 +104,10 @@ guaranteed only for the `(0, 0, 0)` fast path.
   (`engine.core.params.PARAM_KEYS`).
 - Domain: integers `0..99` (`PARAM_MIN=0`, `PARAM_MAX=99`).
   - `0` = no effect (clean link / no multipath / no interference)
-  - `99` = extreme effect
+  - `99` = extreme effect; on `signalStrength` it is the **dead link**:
+    analog shows plain grayscale boiling static only, HDZero holds the full
+    no-signal screen every frame — multipath/interference cannot punch
+    through (their own `99` still applies with a lower signal)
 - **Clamping** (`clamp_param`): values are `round`-ed to int, then clamped
   to `[0, 99]`. Non-numeric / `None` inputs coerce to `0` (no exception).
 - Internally each param becomes raw severity `r = clamp(v)/99 ∈ [0,1]`,
@@ -191,7 +195,10 @@ Notes: the color-killer uses hysteresis on raw severity (latch on at
 `killer_on_th`, release at `killer_off_th`); the renderer converts those raw
 thresholds into `sat_loss`-space internally. Roll event start probability uses
 `roll * 0.12` per eligible frame. `black_lift` is applied after snow: the
-receiver's black level rises as `yy += black_lift * (1 - yy)`.
+receiver's black level rises as `yy += black_lift * (1 - yy)`. At exactly
+`signalStrength = 99` (raw 1.0) the renderer suppresses the rest of the
+picture pipeline — multipath/interference zeroed, roll/seam/tear/jitter
+forced off — and outputs only `static_kill` static (the dead link, §5).
 
 ### 9.2 `multipath_stages(r)` — multipath
 
@@ -294,5 +301,36 @@ purple) and replaces the scene's chroma inside the bar.
   `demo/gui/demo_video1.mp4`, falling back to the synthetic
   `demo/sample_media/sample.mp4`; regenerate the latter with
   `python demo/sample_media/generate_sample.py`)
+- HDZero demo: `python demo/hdzero.py` (same UI, digital engine — also
+  selectable in the GUI via the `LVLS_ENGINE=hdzero` environment variable)
 - QA render matrix: `python tests/render_matrix.py` (writes
-  `tests/qa/matrix/*.png` and short clips under `tests/qa/videos/`)
+  `tests/qa/matrix/*.png` and short clips under `tests/qa/videos/`);
+  HDZero grid: `python tests/render_matrix_hdzero.py`
+  (writes `tests/qa/hdzero/*.png` incl. the `loss_ramp_strip.png`
+  progression strip, and clips under `tests/qa/hdzero_clips/`)
+
+## 15. HDZero engine (digital link)
+
+`HDZeroEngine` (exported from `engine`, module `engine/hdzero/`) mirrors
+`AnalogVideoBreakupEngine` exactly: same constructor, same
+`process()/processFrame()` contract, same setter/getter names, same
+`(seed, frame_index)` determinism, same all-zero bit-identical fast path.
+Only the visual model differs (block corruption instead of analog noise —
+see [`docs/research/hdzero.md`](../research/hdzero.md)).
+
+```python
+from engine import HDZeroEngine, HDZ_PRESETS
+
+eng = HDZeroEngine(seed=42, width=1280, height=720)
+out = eng.process(frame, {"signalStrength": 30, "multipath": 60, "rfInterference": 40})
+```
+
+| Topic | Behavior |
+|---|---|
+| Presets | `HDZ_PRESETS` (same combinations as analog `PRESETS`) |
+| Temporal state | interference takeover event machine + multipath cluster drift/envelope + signal-loss latch (`eng.reset()` clears all three) |
+| Loss screen | the real captured no-signal screen (`engine/hdzero/no_signal.png`, lazy-loaded, center-cropped to the frame aspect); during a loss run random 8x8 patches of it accumulate over `loss_ramp` frames, then the full screen covers the frame; without the asset/OpenCV it falls back to a procedural rainbow-column screen. At exactly `signalStrength = 99` (the dead link) the full screen holds on every frame — no ramp, no black punch-through, multipath/interference ignored |
+| `eng.in_loss` | `True` when the last processed frame was inside a signal-loss run (no-signal screen state) — useful for a "SIGNAL LOST" UI indicator |
+| `warmup()` | precompiles every kernel and forces each event type, a partial-coverage loss frame and the blackout branch |
+| Performance | ~2.5 ms/frame at 720p (offscreen benchmark, mid-severity or loss-active); the loss screen adds ~0.1 ms when active; the `0,0,0` fast path is a plain copy |
+| API differences | none — drop-in replacement for the analog engine |

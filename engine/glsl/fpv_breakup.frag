@@ -361,6 +361,17 @@ vec4 fpvEffect(vec2 fc) {
     MpSt  ms_ = multipath_stages(rm);
     IntSt isf_ = interference_stages(ri);
 
+    // signal 99 = dead link: plain static only — multipath, interference
+    // bands and the sync roll seam must not show through (mirrors the
+    // Python engines)
+    if (rs >= 0.995) {
+        ms_  = multipath_stages(0.0);
+        isf_ = interference_stages(0.0);
+        ss_.roll = 0.0;
+        ss_.tear = 0.0;
+        ss_.h_jitter = 0.0;
+    }
+
     uint fi = uFrame;
     uint es      = uSeed ^ (fi * 0x9E3779B9u);
     uint es_sig  = es ^ 0x51A1u;
