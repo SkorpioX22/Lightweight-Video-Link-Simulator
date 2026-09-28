@@ -60,6 +60,9 @@ _NOSIGNAL_TRIED = False
 def _load_no_signal_src():
     """Load the bundled no-signal screen as RGB uint8, or None.
 
+    The bundled capture is © its respective owner; "HDZero" is a
+    trademark of its respective owner and this project is not affiliated
+    with or endorsed by HDZero (see README "Trademarks & copyright").
     Tries no_signal.npy first, then no_signal.png (needs OpenCV — the
     engine itself only requires numpy + numba, so a missing cv2 or file
     silently falls back to the procedural loss screen in fill_loss).

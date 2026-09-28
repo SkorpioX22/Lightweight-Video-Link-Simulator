@@ -8,6 +8,12 @@ error rate outruns the FEC, then degrades in discrete, ugly steps — corrupt
 blocks, line gibberish, stutter/freeze, and abrupt **breakup to black** — and
 recovers as abruptly as it failed ("cliff effect").
 
+> **Copyright notice:** "HDZero" is a trademark of its respective owner.
+> This document is independent field research — not affiliated with,
+> sponsored, or endorsed by HDZero. The bundled no-signal screen capture
+> (`engine/hdzero/no_signal.png`) is © its respective owner and is used
+> here only as a reference for the simulated loss screen.
+
 ## 1. Failure modes and signatures
 
 | Mode | Signature |

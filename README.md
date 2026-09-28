@@ -300,3 +300,12 @@ Shadertoy notes, verification status and deliberate differences.
   alongside the existing analog and HDZero models.
 - **GLSL port for HDZero** — the analog shader port exists; a digital
   counterpart would enable in-simulator realtime HDZero breakup.
+
+## Trademarks & copyright
+
+"HDZero" is a trademark of its respective owner. This project is an
+independent, unofficial simulation built for research and development —
+it is not affiliated with, sponsored, or endorsed by HDZero. The bundled
+no-signal screen capture (`engine/hdzero/no_signal.png`) is © its
+respective owner and is included solely as a reference image for the
+simulated loss screen.
