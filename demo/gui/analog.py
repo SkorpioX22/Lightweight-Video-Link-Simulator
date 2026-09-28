@@ -1,7 +1,7 @@
 """PySide6 GUI demo for LVLS — Lightweight Video Link Simulation.
 
-Run analog:   python demo/gui/main.py
-Run HDZero:   python demo/hdzero.py   (or LVLS_ENGINE=hdzero)
+Run analog:   python demo/gui/analog.py
+Run HDZero:   python demo/gui/hdzero.py   (or LVLS_ENGINE=hdzero)
 """
 import os
 import queue

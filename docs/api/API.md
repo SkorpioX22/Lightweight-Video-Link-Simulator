@@ -297,11 +297,11 @@ purple) and replaces the scene's chroma inside the bar.
 
 ## 14. Related entry points
 
-- GUI demo: `python demo/gui/main.py` (uses
+- GUI demo: `python demo/gui/analog.py` (uses
   `demo/gui/demo_video1.mp4`, falling back to the synthetic
   `demo/sample_media/sample.mp4`; regenerate the latter with
   `python demo/sample_media/generate_sample.py`)
-- HDZero demo: `python demo/hdzero.py` (same UI, digital engine — also
+- HDZero demo: `python demo/gui/hdzero.py` (same UI, digital engine — also
   selectable in the GUI via the `LVLS_ENGINE=hdzero` environment variable)
 - QA render matrix: `python tests/render_matrix.py` (writes
   `tests/qa/matrix/*.png` and short clips under `tests/qa/videos/`);

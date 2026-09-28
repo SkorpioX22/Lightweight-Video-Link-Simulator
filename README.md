@@ -176,10 +176,10 @@ parameters live, with a side-by-side original/processed view.
 pip install PySide6 opencv-python
 
 # 2. launch the GUI (from the project root)
-python demo/gui/main.py
+python demo/gui/analog.py
 
 # or the HDZero digital-link demo (same UI, HDZero engine)
-python demo/hdzero.py
+python demo/gui/hdzero.py
 ```
 
 **Controls**
@@ -252,8 +252,8 @@ Shadertoy notes, verification status and deliberate differences.
 | Path | Shipped in repo? | Notes |
 |---|---|---|
 | `engine/` | yes | simulation core (Python/Numba + GLSL): analog + HDZero (incl. the `hdzero/no_signal.png` loss-screen asset) |
-| `demo/gui/main.py` | yes | PySide6 GUI demo (analog engine; engine selectable via `LVLS_ENGINE`) |
-| `demo/hdzero.py` | yes | HDZero demo entry point (same UI, digital engine) |
+| `demo/gui/analog.py` | yes | PySide6 GUI demo — analog engine (engine selectable via `LVLS_ENGINE`) |
+| `demo/gui/hdzero.py` | yes | HDZero demo entry point (same UI, digital engine) |
 | `demo/sample_media/` | yes | synthetic sample clip + generator |
 | `demo/gui/demo_video1.mp4` | **no** | large footage file — add your own clip (see demo instructions) |
 | `tests/`, `docs/`, `examples/` | yes | test suite, QA harness, docs |

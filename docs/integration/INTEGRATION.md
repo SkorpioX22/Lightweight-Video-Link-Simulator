@@ -261,7 +261,10 @@ future GLSL port as behaviorally matched to the tables in
 
 ```
 # GUI demo (video: demo/gui/demo_video1.mp4)
-python demo/gui/main.py
+python demo/gui/analog.py
+
+# HDZero digital-link demo (same UI, different engine)
+python demo/gui/hdzero.py
 
 # regenerate the sample clip / still
 python demo/sample_media/generate_sample.py
